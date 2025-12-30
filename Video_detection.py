@@ -95,96 +95,77 @@ def draw_haar_boxes(frame, gray, cascade):
 # MAIN FUNCTION
 
 def main():
-  # Open video file
-  cap = cv2.VideoCapture(VIDEO_PATH)
+    # Open video file
+    cap = cv2.VideoCapture(VIDEO_PATH)
 
-  # Checking if video opened correctly
-  if not cap.isOpened():
-    print("Error: Video file not found")
-    return
-  
-  # Get video properties for VideoWriter
-  width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-  height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-  fps = int(cap.get(cv2.CAP_PROP_FPS))
+    if not cap.isOpened():
+        print("Error: Video file not found")
+        return
 
-  # Creating video writers for YOLO and HAAR outputs
-  fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    # Get video properties safely
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-  yolo_writer = cv2.VideoWriter(
-    YOLO_OUTPUT_PATH, fourcc, fps, (width, height)
-  )
+    # Read FPS safely (VERY IMPORTANT)
+    fps = cap.get(cv2.CAP_PROP_FPS)
 
-  haar_writer = cv2.VideoWriter(
-    HAAR_OUTPUT_PATH, fourcc, fps, (width, height)
-  )
+    # Fallback if FPS is invalid
+    if fps <= 0 or fps > 120:
+        fps = 25.0   # standard fallback FPS
 
-  # Loading both models
-  yolo_model, face_cascade = load_models()
+    print(f"Video FPS detected: {fps}")
 
-  # Used for FPS Calculation
-  #prev_time = 0
+    # Create VideoWriter
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 
-  while True:
-    # Reading video frame
-    ret, frame = cap.read()
-    if not ret:
-      break
+    yolo_writer = cv2.VideoWriter(
+        YOLO_OUTPUT_PATH, fourcc, fps, (width, height)
+    )
 
-    # creating separate copies for YOLO and HAAR outputs
-    yolo_frame = frame.copy()
-    haar_frame = frame.copy()
+    haar_writer = cv2.VideoWriter(
+        HAAR_OUTPUT_PATH, fourcc, fps, (width, height)
+    )
 
-    # Converting Frame to Grayscale
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # Load models
+    yolo_model, face_cascade = load_models()
 
-    # YOLOv8 Detection
-    results = yolo_model(frame, verbose = False)
-    draw_yolo_boxes(yolo_frame, results)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    # HAAR Detection
-    draw_haar_boxes(haar_frame, gray, face_cascade)
+        yolo_frame = frame.copy()
+        haar_frame = frame.copy()
 
-    # Writing the frames to respective videos
-    yolo_writer.write(yolo_frame)
-    haar_writer.write(haar_frame)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # Dispalying combined preview
-    combined = cv2.hconcat([yolo_frame, haar_frame])
-    cv2.imshow("YOLOv8 (Left) + HAAR (Right)", combined)
+        # YOLOv8 Detection
+        results = yolo_model(frame, verbose=False)
+        draw_yolo_boxes(yolo_frame, results)
 
-    # FPS Calculation
-    #curr_time = time.time()
-    #fps = 1 / (curr_time - prev_time) if prev_time != 0 else 0
-    #prev_time = curr_time
+        # HAAR Detection
+        draw_haar_boxes(haar_frame, gray, face_cascade)
 
-    # Displaying FPS on Screen
-    #cv2.putText(
-        #frame,
-        #f"FPS: {int(fps)}",
-        #(20, 40),
-        #cv2.FONT_HERSHEY_SIMPLEX,
-        #1,
-        #(0, 0, 255),
-        #2
-    #)
+        # Write frames
+        yolo_writer.write(yolo_frame)
+        haar_writer.write(haar_frame)
 
-    # Showing the Output window
-    #cv2.imshow("YOLOv8 + HAAR Object Detection", frame)
+        # Preview (optional)
+        combined = cv2.hconcat([yolo_frame, haar_frame])
+        cv2.imshow("YOLOv8 (Left) + HAAR (Right)", combined)
 
-    # Press ESC Key to exit
-    if cv2.waitKey(1) & 0xFF == 27:
-      break
+        if cv2.waitKey(1) & 0xFF == 27:
+            break
 
-  # Release Resources
-  cap.release()
-  yolo_writer.release()
-  haar_writer.release()
-  cv2.destroyAllWindows()
+    cap.release()
+    yolo_writer.release()
+    haar_writer.release()
+    cv2.destroyAllWindows()
 
-  print("Saved:")
-  print(" - YOLO output:", YOLO_OUTPUT_PATH)
-  print(" - HAAR output:", HAAR_OUTPUT_PATH)
+    print("Saved:")
+    print(" - YOLO output:", YOLO_OUTPUT_PATH)
+    print(" - HAAR output:", HAAR_OUTPUT_PATH)
 
-# Runing the Program
-main()
+# RUN MAIN
+if __name__ == "__main__":
+    main()
